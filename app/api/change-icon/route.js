@@ -9,7 +9,8 @@ const IMAGE_10AM = "https://i.postimg.cc/50gzgM2h/IMG-2538.png";
 const IMAGE_8PM = "https://i.postimg.cc/7hQ2vM71/IMG-2547.png";
 
 async function getBase64Image(url) {
-  const res = await fetch(url);
+  const proxyUrl = `https://allorigins.win{encodeURIComponent(url)}`;
+  const res = await fetch(proxyUrl);
   if (!res.ok) throw new Error(`Failed to fetch image: ${url}`);
   const arrayBuffer = await res.arrayBuffer();
   const buffer = Buffer.from(arrayBuffer);
