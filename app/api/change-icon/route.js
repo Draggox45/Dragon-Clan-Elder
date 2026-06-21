@@ -19,7 +19,7 @@ async function getBase64Image(url) {
 
 export async function GET() {
   const token = process.env.DISCORD_BOT_TOKEN;
-  const guildId = process.env.DISCORD_GUILD_ID;
+  const guildId = "1518067976690073620";
 
   if (!token || !guildId) {
     return NextResponse.json({ 
