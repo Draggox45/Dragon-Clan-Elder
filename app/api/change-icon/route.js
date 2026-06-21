@@ -1,11 +1,13 @@
 import { NextResponse } from 'next/server';
 
+// This line forces Next.js to read environment variables at runtime instead of caching them
+export const dynamic = 'force-dynamic';
+
 // Paste your image URLs here
 const IMAGE_4AM = "https://i.postimg.cc/m2DYdhMw/IMG-2539.png";
 const IMAGE_10AM = "https://i.postimg.cc/50gzgM2h/IMG-2538.png";
 const IMAGE_8PM = "https://i.postimg.cc/7hQ2vM71/IMG-2547.png";
 
-// Helper function to fetch an image URL and convert it to Discord's required base64 format
 async function getBase64Image(url) {
   const res = await fetch(url);
   if (!res.ok) throw new Error(`Failed to fetch image: ${url}`);
@@ -20,7 +22,10 @@ export async function GET() {
   const guildId = process.env.DISCORD_GUILD_ID;
 
   if (!token || !guildId) {
-    return NextResponse.json({ error: 'Missing environment variables' }, { status: 500 });
+    return NextResponse.json({ 
+      error: 'Missing environment variables',
+      debug: { hasToken: !!token, hasGuild: !!guildId }
+    }, { status: 500 });
   }
 
   // Get the current hour (0-23) in Eastern Time
@@ -31,22 +36,18 @@ export async function GET() {
   });
   const currentHour = parseInt(formatter.format(new Date()), 10);
 
-  // Determine which image URL to use based on your schedule windows
-  let targetImageUrl = IMAGE_8PM; // Default fallback
+  // Time logic using your exact three target windows
+  let targetImageUrl = IMAGE_8PM; // Fallback for night hours
 
   if (currentHour >= 4 && currentHour < 10) {
-    targetImageUrl = IMAGE_4AM;  // From 4:00 AM to 9:59 AM
+    targetImageUrl = IMAGE_4AM;  // Active from 4:00 AM to 9:59 AM
   } else if (currentHour >= 10 && currentHour < 20) {
-    targetImageUrl = IMAGE_10AM; // From 10:00 AM to 7:59 PM
-  } else {
-    targetImageUrl = IMAGE_8PM; // From 8:00 PM to 3:59 AM
-  }
+    targetImageUrl = IMAGE_10AM; // Active from 10:00 AM to 7:59 PM (20:00)
+  } // Any hour from 20 (8 PM) onwards or before 4 AM stays on IMAGE_8PM
 
   try {
-    // 1. Download image and convert to Base64
     const base64Icon = await getBase64Image(targetImageUrl);
 
-    // 2. Patch the Discord Guild Icon
     const response = await fetch(`https://discord.com{guildId}`, {
       method: 'PATCH',
       headers: {
@@ -58,15 +59,10 @@ export async function GET() {
 
     if (!response.ok) {
       const errorData = await response.json();
-      return NextResponse.json({ error: 'Discord API Refused', details: errorData }, { status: response.status });
+      return NextResponse.json({ error: 'Discord Refused', details: errorData }, { status: response.status });
     }
 
-    return NextResponse.json({ 
-      success: true, 
-      message: `Icon updated successfully for hour ${currentHour}`,
-      usedImage: targetImageUrl 
-    });
-
+    return NextResponse.json({ success: true, hour: currentHour, image: targetImageUrl });
   } catch (error) {
     return NextResponse.json({ error: 'Internal Error', details: error.message }, { status: 500 });
   }
